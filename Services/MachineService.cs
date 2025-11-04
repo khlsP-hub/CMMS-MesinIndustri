@@ -1,4 +1,5 @@
-﻿using APIIndustry.Models;
+﻿using System.Linq;
+using APIIndustry.Models;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -14,21 +15,21 @@ namespace APIIndustry.Services
             var database = client.GetDatabase(mongoSettings.Value.DatabaseName);
             _machines = database.GetCollection<Machine>("data_mesin");
         }
-//Halo Halis
+        //Halo Halis
         public async Task<List<Machine>> GetAllAsync() =>
             await _machines.Find(_ => true).ToListAsync();
 
         public async Task<Machine?> GetByIdAsync(string id) =>
-            await _machines.Find(m => m.Id == id).FirstOrDefaultAsync();
+            await _machines.Find(m => m.machine_id == id).FirstOrDefaultAsync();
 
         public async Task CreateAsync(Machine newMachine) =>
             await _machines.InsertOneAsync(newMachine);
 
         public async Task UpdateAsync(string id, Machine updated) =>
-            await _machines.ReplaceOneAsync(m => m.Id == id, updated);
+            await _machines.ReplaceOneAsync(m => m.machine_id == id, updated);
 
         public async Task DeleteAsync(string id) =>
-            await _machines.DeleteOneAsync(m => m.Id == id);
+            await _machines.DeleteOneAsync(m => m.machine_id == id);
 
         public async Task<Component?> GetComponentByNameAsync(string machineId, string componentName)
         {
@@ -39,7 +40,30 @@ namespace APIIndustry.Services
         public async Task<MaintenanceTask?> GetTaskByNameAsync(string machineId, string componentName, string taskName)
         {
             var comp = await GetComponentByNameAsync(machineId, componentName);
-            return comp?.MaintenanceTasks.FirstOrDefault(t => t.TaskName == taskName);
+            return comp?.MaintenanceTasks.FirstOrDefault(t => t.task_name == taskName);
+        }
+        public async Task<List<MaintenanceTaskResult>> GetAllMaintenanceTasksAsync()
+        {
+            // Fetch all machines and flatten components and their maintenance tasks in-memory to keep strong typing
+            var machines = await _machines.Find(_ => true).ToListAsync();
+
+            var results = machines
+                .Where(m => m.Components != null)
+                .SelectMany(m => m.Components
+                    .Where(c => c.MaintenanceTasks != null)
+                    .SelectMany(c => c.MaintenanceTasks.Select(t => new MaintenanceTaskResult
+                    {
+                        machine = m.machine,
+                        component_name = c.ComponentName,
+                        task_name = t.task_name,
+                        last_date = t.last_date,
+                        person_in_charge = t.person_in_charge,
+                        maintenance_count = t.maintenance_count
+                    })))
+                .ToList();
+
+            return results;
+        }
         }
     }
 
@@ -48,4 +72,3 @@ namespace APIIndustry.Services
         public string ConnectionString { get; set; } = string.Empty;
         public string DatabaseName { get; set; } = string.Empty;
     }
-}
