@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 
 namespace APIIndustry.Models;
-
+//terkhalis kalis
 public class MaintenanceTask
 {
     [BsonElement("task_name")]

@@ -14,7 +14,7 @@ namespace APIIndustry.Services
             var database = client.GetDatabase(mongoSettings.Value.DatabaseName);
             _machines = database.GetCollection<Machine>("data_mesin");
         }
-
+//Halo Halis
         public async Task<List<Machine>> GetAllAsync() =>
             await _machines.Find(_ => true).ToListAsync();
 
