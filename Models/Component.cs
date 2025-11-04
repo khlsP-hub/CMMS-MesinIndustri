@@ -1,6 +1,6 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 
-namespace APIMongoDB.Models;
+namespace APIIndustry.Models;
 
 public class Component
 {
