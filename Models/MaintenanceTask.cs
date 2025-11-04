@@ -5,14 +5,14 @@ namespace APIIndustry.Models;
 public class MaintenanceTask
 {
     [BsonElement("task_name")]
-    public string TaskName { get; set; } = null!;
+    public string task_name { get; set; } = null!;
 
     [BsonElement("last_date")]
-    public string LastDate { get; set; } = null!;
+    public string last_date { get; set; } = null!;
 
     [BsonElement("person_in_charge")]
-    public string PersonInCharge { get; set; } = null!;
+    public string person_in_charge { get; set; } = null!;
 
     [BsonElement("maintenance_count")]
-    public int MaintenanceCount { get; set; }
+    public int maintenance_count { get; set; }
 }
