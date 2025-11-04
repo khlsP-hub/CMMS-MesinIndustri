@@ -10,7 +10,10 @@ public class Machine
     public string Id { get; set; } = string.Empty;
 
     [BsonElement("machine")]
-    public string MachineName { get; set; } = string.Empty;
+    public string machine { get; set; } = string.Empty;
+
+    [BsonElement("machine_id")]
+    public string machine_id { get; set; } = string.Empty;
 
     [BsonElement("components")]
     public List<Component> Components { get; set; } = new();
