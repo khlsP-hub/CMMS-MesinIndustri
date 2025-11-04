@@ -12,7 +12,7 @@ namespace APIIndustry.Services
         {
             var client = new MongoClient(mongoSettings.Value.ConnectionString);
             var database = client.GetDatabase(mongoSettings.Value.DatabaseName);
-            _machines = database.GetCollection<Machine>("machines");
+            _machines = database.GetCollection<Machine>("data_mesin");
         }
 
         public async Task<List<Machine>> GetAllAsync() =>
