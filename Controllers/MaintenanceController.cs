@@ -9,7 +9,6 @@ namespace APIIndustry.Controllers
     [Route("api/[controller]")]
     public class MaintenanceController : ControllerBase
     {
-        // Controller ini pakai MachineService
         private readonly MachineService _machineService;
 
         public MaintenanceController(MachineService machineService)
@@ -17,12 +16,24 @@ namespace APIIndustry.Controllers
             _machineService = machineService;
         }
 
-        // GET: /api/Maintenance
+        // Ini endpoint LAMA Anda (GET: /api/Maintenance)
+        // (Tetap biarkan untuk halaman Maintenance History)
         [HttpGet]
         public async Task<List<MaintenanceTaskResult>> Get()
         {
-            // Panggil metode baru & kembalikan List<MaintenanceTaskResult>
             return await _machineService.GetAllMaintenanceTasksAsync();
+        }
+
+        // --- TAMBAHKAN ENDPOINT BARU INI ---
+        // Ini akan menangani: GET /api/Maintenance/4
+        [HttpGet("{id}")]
+        public async Task<ActionResult<List<MaintenanceTaskResult>>> GetByMachineId(string id)
+        {
+            // 1. Panggil fungsi baru di service
+            var tasks = await _machineService.GetMaintenanceTasksForMachineAsync(id);
+            
+            // 2. Kirim hasilnya
+            return Ok(tasks);
         }
     }
 }

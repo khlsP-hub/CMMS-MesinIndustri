@@ -18,6 +18,35 @@ namespace APIIndustry.Services
         //Halo Halis
         public async Task<List<Machine>> GetAllAsync() =>
             await _machines.Find(_ => true).ToListAsync();
+        // Tambahkan fungsi BARU ini di dalam class MachineService Anda
+public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsync(string id)
+{
+    // 1. Kita panggil fungsi GetByIdAsync yang sudah Anda buat
+    var machine = await GetByIdAsync(id);
+
+    // 2. Jika mesin tidak ditemukan, kirim daftar kosong
+    if (machine == null || machine.Components == null)
+    {
+        return new List<MaintenanceTaskResult>(); 
+    }
+
+    // 3. Ini adalah logika yang SAMA PERSIS dengan GetAllMaintenanceTasksAsync,
+    //    tapi HANYA untuk satu mesin yang kita temukan.
+    var results = machine.Components
+        .Where(c => c.MaintenanceTasks != null)
+        .SelectMany(c => c.MaintenanceTasks.Select(t => new MaintenanceTaskResult
+        {
+            machine = machine.machine,
+            component_name = c.ComponentName,
+            task_name = t.task_name,
+            last_date = t.last_date,
+            person_in_charge = t.person_in_charge,
+            maintenance_count = t.maintenance_count
+        }))
+        .ToList();
+    
+    return results;
+}
 
         public async Task<Machine?> GetByIdAsync(string id) =>
             await _machines.Find(m => m.machine_id == id).FirstOrDefaultAsync();
