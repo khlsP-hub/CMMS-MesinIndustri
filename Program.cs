@@ -9,6 +9,7 @@ builder.Services.Configure<MongoDbSettings>(
 
 builder.Services.AddSingleton<MachineService>();
 builder.Services.AddSingleton<ProductionLineService>();
+builder.Services.AddSingleton<InventoryLogService>();
 
 // ===== Basic WebAPI setup =====
 builder.Services.AddControllers();
