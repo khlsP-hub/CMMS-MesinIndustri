@@ -111,7 +111,7 @@ if __name__ == "__main__":
         )
         from PySide6.QtCore import (
             Qt, QSize, 
-            Signal
+            Signal, QDateTime # <-- Pastikan QDateTime diimpor
         )
 
         # --- Bagian 4: Definisi Kelas (URUTAN SUDAH DIPERBAIKI) ---
@@ -120,14 +120,13 @@ if __name__ == "__main__":
         # 1. DEFINISI KELAS HELPER (POP-UP DAN KARTU)
         # =======================================================
 
-        # --- [PERUBAHAN] Class ini sekarang menampilkan Maintenance ---
         class MaintenanceDialog(QDialog):
             """Jendela dialog (pop-up) untuk menampilkan DAFTAR maintenance task."""
             def __init__(self, nama_mesin, list_task, parent=None):
                 super().__init__(parent)
                 
                 self.setWindowTitle(f"Riwayat Maintenance - {nama_mesin}")
-                self.setMinimumSize(500, 400) # Dibuat sedikit lebih besar
+                self.setMinimumSize(500, 400)
                 self.setStyleSheet("background-color: #FFFFFF;")
 
                 layout = QVBoxLayout(self)
@@ -139,7 +138,7 @@ if __name__ == "__main__":
                 scroll_content = QWidget()
                 scroll_layout = QVBoxLayout(scroll_content)
                 scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-                scroll_layout.setSpacing(8) # Beri jarak antar item
+                scroll_layout.setSpacing(8) 
                 scroll_area.setWidget(scroll_content)
 
                 if not list_task:
@@ -147,19 +146,15 @@ if __name__ == "__main__":
                     label_task.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     scroll_layout.addWidget(label_task)
                 else:
-                    # Loop dan tampilkan setiap task
                     for task in list_task:
-                        # Buat card kecil untuk setiap task
                         task_frame = QFrame()
-                        # Kita gunakan style 'historyItemFrame' dari QSS Anda
                         task_frame.setObjectName("historyItemFrame") 
                         task_layout = QVBoxLayout(task_frame)
                         
-                        # Ambil data dari JSON (hasil dari MaintenanceTaskResult)
                         header_text = f"{task.get('last_date', 'N/A')} — Komponen: {task.get('component_name', 'N/A')}"
                         header_label = QLabel(header_text)
                         header_label.setFont(QFont("Roboto", 12, QFont.Weight.Bold))
-                        header_label.setStyleSheet("color: #003366;") # Warna dari history page
+                        header_label.setStyleSheet("color: #003366;") 
                         
                         detail_text = f"Tugas: {task.get('task_name', 'N/A')} (Oleh: {task.get('person_in_charge', 'N/A')})"
                         detail_label = QLabel(detail_text)
@@ -277,9 +272,9 @@ if __name__ == "__main__":
         class DashboardPage(QWidget):
             """Halaman dashboard utama dengan kartu gambar di atas kartu teks."""
             
-            # [PERUBAHAN] Tentukan KEDUA URL API di sini
             API_MACHINE_URL = "http://localhost:5042/api/Machines"
             API_MAINTENANCE_URL = "http://localhost:5042/api/Maintenance"
+            API_INVENTORY_URL = "http://localhost:5042/api/InventoryLogs" # <-- Tambah URL Inventory
             
             def __init__(self):
                 super().__init__()
@@ -328,7 +323,6 @@ if __name__ == "__main__":
                         mesin["last_maintenance"]
                     )
                     
-                    # --- [PERUBAHAN] Hubungkan klik ke fungsi maintenance ---
                     kartu_gambar.clicked.connect(self.tampilkan_maintenance_dari_api)
                     kartu_teks.clicked.connect(self.tampilkan_maintenance_dari_api)
                     
@@ -341,33 +335,27 @@ if __name__ == "__main__":
                 self.grid_layout.setRowStretch(baris_selanjutnya, 1)
                 self.grid_layout.setColumnStretch(KOLOM_PER_MESIN, 1)
 
-            # --- [PERUBAHAN] Fungsi ini sekarang memanggil API Maintenance ---
             def tampilkan_maintenance_dari_api(self, machine_id):
                 """Fungsi yang dipanggil saat kartu diklik."""
                 
                 print(f"Mengambil data maintenance untuk machine_id: {machine_id}...")
                 
                 try:
-                    # 1. Panggil API detail BARU: /api/Maintenance/4
                     response = requests.get(f"{self.API_MAINTENANCE_URL}/{machine_id}", timeout=5)
                     
                     if response.status_code == 200:
-                        # 2. Ambil data JSON (ini adalah list of MaintenanceTaskResult)
                         list_task = response.json()
                         
-                        # 3. Kita perlu nama mesin. Kita bisa ambil dari data statis.
-                        nama_mesin = "Mesin" # default
+                        nama_mesin = "Mesin"
                         for m in self.data_mesin_statis:
                             if m["machine_id"] == machine_id:
                                 nama_mesin = m["nama"]
                                 break
                         
-                        # 4. Tampilkan dialog BARU dengan daftar task
                         dialog = MaintenanceDialog(nama_mesin, list_task, self)
                         dialog.exec()
                         
                     else:
-                        # Tampilkan error jika API tidak merespons 200
                         error_dialog = MaintenanceDialog(
                             f"Error {response.status_code}", 
                             [{"task_name": f"Gagal mengambil data dari API.\n{response.text}"}], 
@@ -430,7 +418,6 @@ if __name__ == "__main__":
                 """Mengambil data dari GET /api/Machines dan menampilkannya."""
                 self.clear_layout(self.scroll_layout)
                 
-                # Gunakan API_URL dari DashboardPage
                 API_URL = DashboardPage.API_MACHINE_URL 
                 
                 try:
@@ -509,11 +496,9 @@ if __name__ == "__main__":
                 """Mengambil data API, meratakannya, dan menampilkannya."""
                 self.clear_layout(self.scroll_layout)
                 
-                # [PERUBAHAN] Gunakan URL API Maintenance
                 API_URL = DashboardPage.API_MAINTENANCE_URL 
                 
                 try:
-                    # Endpoint ini (/api/Maintenance) sudah mengembalikan data yang rata
                     response = requests.get(API_URL, timeout=5)
                     if response.status_code != 200:
                         raise Exception(f"Gagal memuat: Status {response.status_code}")
@@ -568,7 +553,151 @@ if __name__ == "__main__":
 
         
         # =======================================================
-        # 3. DEFINISI KELAS JENDELA UTAMA (MAINWINDOW)
+        # 3. (GANTI) DEFINISI KELAS HALAMAN INVENTORY
+        # =======================================================
+        class InventoryPage(QWidget):
+            """Halaman untuk menampilkan log inventory dari API."""
+            def __init__(self):
+                super().__init__()
+                main_layout = QVBoxLayout(self)
+                main_layout.setContentsMargins(0, 0, 0, 0)
+                
+                title_label = QLabel("Riwayat Log Inventory")
+                title_font = QFont("Roboto", 18)
+                title_font.setBold(True)
+                title_label.setFont(title_font)
+                title_label.setStyleSheet("padding-bottom: 10px;")
+                
+                self.scroll_area = QScrollArea()
+                self.scroll_area.setWidgetResizable(True)
+                self.scroll_area.setObjectName("scrollArea")
+
+                self.scroll_content_widget = QWidget()
+                self.scroll_layout = QVBoxLayout(self.scroll_content_widget)
+                self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+                self.scroll_layout.setSpacing(8)
+
+                self.scroll_area.setWidget(self.scroll_content_widget)
+                
+                main_layout.addWidget(title_label)
+                main_layout.addWidget(self.scroll_area)
+                self.setLayout(main_layout)
+                
+                self.load_inventory()
+
+            def clear_layout(self, layout):
+                while layout.count():
+                    child = layout.takeAt(0)
+                    if child.widget():
+                        child.widget().deleteLater()
+
+            def format_timestamp(self, timestamp_str):
+                """Mengubah format timestamp ISO menjadi lebih mudah dibaca."""
+                try:
+                    # Coba format dengan milidetik
+                    dt = QDateTime.fromString(timestamp_str, Qt.DateFormat.ISODateWithMs)
+                    if not dt.isValid():
+                         # Coba format tanpa milidetik (jika '...Z' saja)
+                         dt = QDateTime.fromString(timestamp_str, Qt.DateFormat.ISODate)
+
+                    if dt.isValid():
+                        # Ubah ke zona waktu lokal dan format ulang
+                        return dt.toLocalTime().toString("dd MMM yyyy, hh:mm:ss")
+                    else:
+                        return timestamp_str # Kembalikan string asli jika format gagal
+                except Exception:
+                    return timestamp_str # Kembalikan string asli jika ada error
+
+            def load_inventory(self):
+                """Mengambil data dari GET /api/InventoryLogs dan menampilkannya."""
+                self.clear_layout(self.scroll_layout)
+                
+                API_URL = DashboardPage.API_INVENTORY_URL # Ambil URL dari DashboardPage
+                
+                try:
+                    response = requests.get(API_URL, timeout=5)
+                    if response.status_code != 200:
+                        raise Exception(f"Gagal memuat: Status {response.status_code}")
+                    
+                    log_list = response.json()
+                    
+                    if not log_list:
+                        info_label = QLabel("Tidak ada riwayat inventory untuk ditampilkan.")
+                        info_label.setFont(QFont("Roboto", 16))
+                        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                        self.scroll_layout.addWidget(info_label)
+                        return
+
+                    # Loop melalui setiap log dan tampilkan
+                    for log in log_list:
+                        item_frame = QFrame()
+                        item_frame.setObjectName("historyItemFrame") # Pakai style yang sama
+                        item_layout = QVBoxLayout(item_frame)
+                        
+                        # --- DISESUAIKAN DENGAN FORMAT JSON ANDA ---
+                        
+                        timestamp = self.format_timestamp(log.get('timestamp', 'N/A'))
+                        quantity = log.get('quantityChange', 0)
+                        
+                        if quantity > 0:
+                            header_color = "color: #006400;" # Hijau
+                            tx_text = f"MASUK (+{quantity})"
+                        else:
+                            header_color = "color: #8B0000;" # Merah
+                            tx_text = f"KELUAR ({quantity})"
+                        
+                        tx_type = log.get('transactionType', 'N/A')
+
+                        header_text = f"{timestamp} — {tx_text} (Tipe: {tx_type})"
+                        header_label = QLabel(header_text)
+                        header_font = QFont("Roboto", 14) 
+                        header_font.setBold(True)
+                        header_label.setFont(header_font)
+                        header_label.setStyleSheet(header_color)
+                        
+                        detail_text = (
+                            f"ID Item: {log.get('iD_Items', 'N/A')} "
+                            f"(Oleh: {log.get('iD_Karyawan', 'N/A')})"
+                        )
+                        detail_label = QLabel(detail_text)
+                        detail_label.setFont(QFont("Roboto", 12)) 
+                        detail_label.setWordWrap(True)
+                        
+                        ref_doc = log.get('referenceDoc')
+                        # ----------------------------------------------
+
+                        item_layout.addWidget(header_label)
+                        item_layout.addWidget(detail_label)
+                        
+                        if ref_doc:
+                            ref_label = QLabel(f"Referensi: {ref_doc}")
+                            ref_label.setFont(QFont("Roboto", 10, italic=True))
+                            ref_label.setStyleSheet("color: #555;")
+                            item_layout.addWidget(ref_label)
+                        
+                        self.scroll_layout.addWidget(item_frame)
+
+                except requests.exceptions.ConnectionError as e:
+                    self.show_error(f"Error Koneksi: {e}\n\nPastikan backend .NET Anda berjalan.")
+                except requests.exceptions.Timeout:
+                    self.show_error("Error: Permintaan timeout.")
+                except requests.exceptions.JSONDecodeError:
+                    self.show_error("Error: Gagal memproses data JSON dari API.")
+                except Exception as e:
+                    self.show_error(f"Terjadi error saat memuat data: {e}")
+
+            def show_error(self, message):
+                self.clear_layout(self.scroll_layout)
+                error_label = QLabel(message)
+                error_label.setStyleSheet("color: red;")
+                error_label.setFont(QFont("Roboto", 14))
+                error_label.setWordWrap(True)
+                error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.scroll_layout.addWidget(error_label)
+        
+        
+        # =======================================================
+        # 4. DEFINISI KELAS JENDELA UTAMA (MAINWINDOW)
         # =======================================================
 
         class MainWindow(QMainWindow):
@@ -602,12 +731,17 @@ if __name__ == "__main__":
                 self.sidebar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.sidebar_label.setStyleSheet("margin-bottom: 20px;")
                 sidebar_layout.addWidget(self.sidebar_label)
+                
                 self.btn_dashboard = QPushButton("Dashboard")
                 self.btn_asset_monitoring = QPushButton("Asset Monitoring")
                 self.btn_history = QPushButton("Maintenance History")
+                self.btn_inventory = QPushButton("Inventory") # <-- Tombol Anda
+                
                 sidebar_layout.addWidget(self.btn_dashboard)
                 sidebar_layout.addWidget(self.btn_asset_monitoring)
                 sidebar_layout.addWidget(self.btn_history)
+                sidebar_layout.addWidget(self.btn_inventory) # <-- Tombol Anda
+                
                 sidebar_layout.addStretch() 
 
             def setup_main_content(self):
@@ -622,14 +756,18 @@ if __name__ == "__main__":
                 self.dashboard_page = DashboardPage()
                 self.asset_page = AssetMonitoringPage()
                 self.history_page = MaintenanceHistoryPage()
+                self.inventory_page = InventoryPage() # <-- Halaman baru Anda
 
                 self.stacked_widget.addWidget(self.dashboard_page)
                 self.stacked_widget.addWidget(self.asset_page)
                 self.stacked_widget.addWidget(self.history_page)
+                self.stacked_widget.addWidget(self.inventory_page) # <-- Halaman baru Anda
 
                 self.btn_dashboard.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.dashboard_page))
                 self.btn_asset_monitoring.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.asset_page))
                 self.btn_history.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.history_page))
+                self.btn_inventory.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.inventory_page)) # <-- Halaman baru Anda
+                
                 self.stacked_widget.setCurrentWidget(self.dashboard_page)
 
         # --- CSS Global (QSS) ---
