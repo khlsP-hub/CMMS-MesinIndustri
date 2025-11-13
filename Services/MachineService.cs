@@ -1,7 +1,11 @@
-﻿using System.Linq;
+﻿// File: Services/MachineService.cs
+using System;
+using System.Linq;
 using APIIndustry.Models;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace APIIndustry.Services
 {
@@ -15,38 +19,40 @@ namespace APIIndustry.Services
             var database = client.GetDatabase(mongoSettings.Value.DatabaseName);
             _machines = database.GetCollection<Machine>("data_mesin");
         }
-        //Halo Halis
+        
         public async Task<List<Machine>> GetAllAsync() =>
             await _machines.Find(_ => true).ToListAsync();
-        // Tambahkan fungsi BARU ini di dalam class MachineService Anda
-public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsync(string id)
-{
-    // 1. Kita panggil fungsi GetByIdAsync yang sudah Anda buat
-    var machine = await GetByIdAsync(id);
-
-    // 2. Jika mesin tidak ditemukan, kirim daftar kosong
-    if (machine == null || machine.Components == null)
-    {
-        return new List<MaintenanceTaskResult>(); 
-    }
-
-    // 3. Ini adalah logika yang SAMA PERSIS dengan GetAllMaintenanceTasksAsync,
-    //    tapi HANYA untuk satu mesin yang kita temukan.
-    var results = machine.Components
-        .Where(c => c.MaintenanceTasks != null)
-        .SelectMany(c => c.MaintenanceTasks.Select(t => new MaintenanceTaskResult
+        
+        public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsync(string id)
         {
-            machine = machine.machine,
-            component_name = c.ComponentName,
-            task_name = t.task_name,
-            last_date = t.last_date,
-            person_in_charge = t.person_in_charge,
-            maintenance_count = t.maintenance_count
-        }))
-        .ToList();
-    
-    return results;
-}
+            var machine = await GetByIdAsync(id);
+            if (machine == null || machine.Components == null)
+            {
+                return new List<MaintenanceTaskResult>(); 
+            }
+            
+            var results = machine.Components
+                .Where(c => c.MaintenanceTasks != null)
+                .SelectMany(c => c.MaintenanceTasks.Select(t => new MaintenanceTaskResult
+                {
+                    machine = machine.machine,
+                    component_name = c.ComponentName,
+                    task_name = t.task_name,
+                    
+                    // --- (LOGIKA CERDAS) ---
+                    last_date = t.completed_date ?? t.last_date, 
+                    scheduled_date = t.scheduled_date,
+                    status = t.Status ?? (t.last_date != null ? "Completed" : "Scheduled"),
+                    // --- (AKHIR LOGIKA CERDAS) ---
+                    
+                    task_id = t.Id, 
+                    person_in_charge = t.person_in_charge,
+                    maintenance_count = t.maintenance_count
+                }))
+                .ToList();
+            
+            return results;
+        }
 
         public async Task<Machine?> GetByIdAsync(string id) =>
             await _machines.Find(m => m.machine_id == id).FirstOrDefaultAsync();
@@ -71,9 +77,9 @@ public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsyn
             var comp = await GetComponentByNameAsync(machineId, componentName);
             return comp?.MaintenanceTasks.FirstOrDefault(t => t.task_name == taskName);
         }
+        
         public async Task<List<MaintenanceTaskResult>> GetAllMaintenanceTasksAsync()
         {
-            // Fetch all machines and flatten components and their maintenance tasks in-memory to keep strong typing
             var machines = await _machines.Find(_ => true).ToListAsync();
 
             var results = machines
@@ -83,9 +89,17 @@ public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsyn
                     .SelectMany(c => c.MaintenanceTasks.Select(t => new MaintenanceTaskResult
                     {
                         machine = m.machine,
-                        component_name = c.ComponentName,
+                        machine_id = m.machine_id, 
+                        component_name = c.ComponentName, 
+                        task_id = t.Id, 
                         task_name = t.task_name,
-                        last_date = t.last_date,
+                        
+                        // --- (LOGIKA CERDAS) ---
+                        last_date = t.completed_date ?? t.last_date,
+                        scheduled_date = t.scheduled_date,
+                        status = t.Status ?? (t.last_date != null ? "Completed" : "Scheduled"),
+                        // --- (AKHIR LOGIKA CERDAS) ---
+
                         person_in_charge = t.person_in_charge,
                         maintenance_count = t.maintenance_count
                     })))
@@ -93,6 +107,64 @@ public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsyn
 
             return results;
         }
+
+        public async Task<bool> ScheduleTaskAsync(ScheduleTaskDto taskDto)
+        {
+            var filter = Builders<Machine>.Filter.Eq(m => m.machine_id, taskDto.MachineId);
+            var machine = await _machines.Find(filter).FirstOrDefaultAsync();
+
+            if (machine == null) return false; 
+
+            var component = machine.Components.FirstOrDefault(c => c.ComponentName == taskDto.ComponentName);
+            if (component == null) return false; 
+
+            var newTask = new MaintenanceTask
+            {
+                task_name = taskDto.TaskName,
+                person_in_charge = taskDto.PersonInCharge,
+                scheduled_date = taskDto.ScheduledDate, 
+                completed_date = null, // Data baru akan menggunakan 'completed_date'
+                last_date = null, // Pastikan data lama null
+                Status = "Scheduled", 
+                maintenance_count = 1 
+            };
+            
+            // "Rusak" komponen
+            if (component.Health > 20)
+            {
+                component.Health = 20; 
+            }
+
+            component.MaintenanceTasks.Add(newTask);
+            
+            var updateResult = await _machines.ReplaceOneAsync(filter, machine);
+            return updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
+        }
+        
+        public async Task<bool> CompleteTaskAsync(string machineId, string componentName, string taskId)
+        {
+            var filter = Builders<Machine>.Filter.Eq(m => m.machine_id, machineId);
+            var machine = await _machines.Find(filter).FirstOrDefaultAsync();
+
+            if (machine == null) return false;
+
+            var component = machine.Components.FirstOrDefault(c => c.ComponentName == componentName);
+            if (component == null) return false;
+
+            var task = component.MaintenanceTasks.FirstOrDefault(t => t.Id == taskId);
+            if (task == null) return false;
+
+            // Update status tugas
+            task.Status = "Completed";
+            task.completed_date = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            task.last_date = null; // Hapus data lama
+
+            // Perbarui health komponen
+            component.Health = 100; 
+            component.LastServiceDate = DateTime.UtcNow;
+
+            var updateResult = await _machines.ReplaceOneAsync(filter, machine);
+            return updateResult.IsAcknowledged && updateResult.ModifiedCount > 0;
         }
     }
 
@@ -101,3 +173,4 @@ public async Task<List<MaintenanceTaskResult>> GetMaintenanceTasksForMachineAsyn
         public string ConnectionString { get; set; } = string.Empty;
         public string DatabaseName { get; set; } = string.Empty;
     }
+}

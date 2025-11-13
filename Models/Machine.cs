@@ -1,5 +1,8 @@
-﻿using MongoDB.Bson;
+﻿// File: Models/Machine.cs
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace APIIndustry.Models;
 
@@ -17,4 +20,20 @@ public class Machine
 
     [BsonElement("components")]
     public List<Component> Components { get; set; } = new();
+
+    // (BARU) Properti ini menghitung health rata-rata
+    // Properti ini TIDAK disimpan di DB, tapi akan dikirim via API
+    [BsonElement("overallHealth")]
+    public int OverallHealth
+    {
+        get
+        {
+            if (Components == null || !Components.Any())
+            {
+                return 100; // Jika tidak ada komponen, anggap 100%
+            }
+            // Hitung rata-rata health dari semua komponen
+            return (int)Components.Average(c => c.Health);
+        }
+    }
 }
