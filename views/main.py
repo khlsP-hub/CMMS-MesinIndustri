@@ -217,7 +217,13 @@ if __name__ == "__main__":
                             self.komponen_combo.addItem("-- Pilih Komponen --", None)
                             for comp in list_komponen:
                                 health = comp.get('health', 100)
-                                comp_name = comp.get("componentName")
+                                
+                                # ==========================================================
+                                # (PERBAIKAN #1 DI SINI)
+                                # Ganti 'componentName' (camelCase) menjadi 'component_name' (snake_case)
+                                comp_name = comp.get("component_name") 
+                                # ==========================================================
+                                
                                 display_text = f"{comp_name} (Health: {health}%)"
                                 self.komponen_combo.addItem(display_text, comp_name)
                     else:
@@ -356,7 +362,8 @@ if __name__ == "__main__":
                     if response.status_code == 200:
                         logs = response.json()
                         # Dapatkan semua ID item unik
-                        unique_ids = sorted(list(set(log.get("iD_Items") for log in logs if log.get("iD_Items"))))
+                        # (FIX) Gunakan key snake_case 'ID_Items'
+                        unique_ids = sorted(list(set(log.get("ID_Items") for log in logs if log.get("ID_Items"))))
                         for item_id in unique_ids:
                             self.item_combo.addItem(item_id, item_id)
                 except Exception as e:
@@ -789,7 +796,13 @@ if __name__ == "__main__":
                 # Cari komponen pertama yang health-nya tidak 100
                 for comp in machine_data.get("components", []):
                     if comp.get("health", 100) < 100:
-                        problem_component = comp.get("componentName", "Komponen Tidak Dikenal")
+                        
+                        # ==========================================================
+                        # (PERBAIKAN #2 DI SINI)
+                        # Ganti 'componentName' (camelCase) menjadi 'component_name' (snake_case)
+                        problem_component = comp.get("component_name", "Komponen Tidak Dikenal")
+                        # ==========================================================
+                        
                         break # Ambil yang pertama saja
                 
                 if health < 50:
@@ -1204,13 +1217,15 @@ if __name__ == "__main__":
                         self.scroll_layout.addWidget(info_label)
                         return
 
-                    for log in sorted(log_list, key=lambda x: x.get('timestamp', ''), reverse=True):
+                    # (FIX) Gunakan key 'Timestamp' dari C#
+                    for log in sorted(log_list, key=lambda x: x.get('Timestamp', ''), reverse=True):
                         item_frame = QFrame()
                         item_frame.setObjectName("historyItemFrame") 
                         item_layout = QVBoxLayout(item_frame)
                         
-                        timestamp = self.format_timestamp(log.get('timestamp', 'N/A'))
-                        quantity = log.get('quantityChange', 0)
+                        # (FIX) Ganti key camelCase -> snake_case
+                        timestamp = self.format_timestamp(log.get('Timestamp', 'N/A'))
+                        quantity = log.get('Quantity_Change', 0)
                         
                         if quantity > 0:
                             header_color = "color: #006400;" # Hijau
@@ -1219,21 +1234,25 @@ if __name__ == "__main__":
                             header_color = "color: #8B0000;" # Merah
                             tx_text = f"KELUAR ({quantity})"
                         
-                        tx_type = log.get('transactionType', 'N/A')
+                        # (FIX) Ganti key camelCase -> snake_case
+                        tx_type = log.get('Transaction_Type', 'N/A')
                         header_text = f"{timestamp} — {tx_text} (Tipe: {tx_type})"
                         header_label = QLabel(header_text)
                         header_font = QFont("Roboto", 14) 
                         header_label.setFont(header_font)
                         header_label.setStyleSheet(header_color)
                         
+                        # (FIX) Ganti key camelCase -> snake_case
                         detail_text = (
-                            f"ID Item: {log.get('iD_Items', 'N/A')} "
-                            f"(Oleh: {log.get('iD_Karyawan', 'N/A')})"
+                            f"ID Item: {log.get('ID_Items', 'N/A')} "
+                            f"(Oleh: {log.get('ID_Karyawan', 'N/A')})"
                         )
                         detail_label = QLabel(detail_text)
                         detail_label.setFont(QFont("Roboto", 12)) 
                         detail_label.setWordWrap(True)
-                        ref_doc = log.get('referenceDoc')
+                        
+                        # (FIX) Ganti key camelCase -> snake_case
+                        ref_doc = log.get('Reference_Doc')
 
                         item_layout.addWidget(header_label)
                         item_layout.addWidget(detail_label)
